@@ -1,4 +1,4 @@
-# Uso de Redes Neurais para Etiquetagem de Partes da Fala (Part of Speech Tagging)
+# Uso de Redes Neurais para Part of Speech Tagging e Parsing de Gramática de Constituintes
 
 - **Jeremias Pinheiro de Araujo Andrade [@?]()**
 - **Lucas Apolonio de Amorim [(@lucasaamorim)](https://github.com/lucasaamorim)**
