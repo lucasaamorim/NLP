@@ -1,55 +1,67 @@
-<!-- OBS: Isso é um esboço e tudo aqui está sujeito a mudanças, sinta-se a vontade para alterar -->
-<!-- Fiz em ingles pq acho menos pior doq traduzir alguns termos que eu usei para pt-br -->
-# Using Neural Networks for Part of Speech Tagging
+# Uso de Redes Neurais para Etiquetagem de Partes da Fala (Part of Speech Tagging)
 
-This repository has implementations for models that do Part of Speech Tagging and Constituency Grammar Parsing of sentences. Tags and Dataset are from the Penn [Treebank](https://en.wikipedia.org/wiki/Treebank).
+- **Jeremias Pinheiro de Araujo Andrade [@?]()**
+- **Lucas Apolonio de Amorim [(@lucasaamorim)](https://github.com/lucasaamorim)**
+- **Moisés Ferreira de Lima [(@moisesferreira123)](https://github.com/moisesferreira123)**
 
-## Implementation Details
-### Data Pre-Processing
-<!-- A pasta no drive está vazia, procurar pelos dados já tratados ou escrever um "parser" simples para extrair os dados relevantes -->
+Este repositório contém implementações de modelos para POS Tagging e Parsing de Gramática de Constituintes de sentenças. As tags e o dataset são provenientes do Penn [Treebank](https://en.wikipedia.org/wiki/Treebank).
+
+## Execução
+Para treinar um modelo:
+```bash
+...
+```
+
+Para usar um modelo:
+```bash
+...
+```
+
+## Detalhes de Implementação
+
+### Pré-processamento de Dados
+**TODO:** Decidir se as sentenças terão algum tipo de normalização (deixar todo o texto minúsculo, remover acentos, etc.) além da adição de padding
+
+As sentenças e outputs são normalizados para o mesmo comprimento através da concatenação de padding. No caso dos taggers, todos os inputs e outputs tem o mesmo comprimento da sentença mais longa (medido em número de palavras), já no Parser, os inputs tem esse mesmo comprimento mas o output tem o comprimento da maior Árvore Gramatical.
+
+### Tokenização dos Dados de Entrada e Embeddings
+**TODO:** Ver se vamos usar embeddings que são palavras inteiras ou subwords, caso sejam subwords, comentar sobre como foram resolvidos problemas com relação a tagging de palavras que foram quebradas em dois ou mais tokens.
+
+Em geral, os embeddings continuam sendo treinados pelos modelos, mas são inicializados utilizando outros embeddings pré-treinados e, portanto, utilizam a tokenização proveniente dessas embeddings (com modificações eventuais para acomodar tags e possíveis palavras ausentes).
+
+### Stack (Tecnologias)
+Todos os modelos serão desenvolvidos utilizando TensorFlow/Keras em Python.
+
+### Hiperparâmetros e Otimizadores
+**TODO:** Decidir Otimizador utilizado, learning rate, loss function, batch size e critério de parada.
+
+### Ambiente Computacional
+O treinamento dos modelos foi realizado em uma máquina com as seguintes especificações:
 ...
 
-### Tokenization of the input data and Embeddings
-The tokens used are the ones defined in [GloVe](https://nlp.stanford.edu/projects/glove/), as their embeddings are used to initialize the embeddings on all models, with eventual changes to also accommodate for the tags from the Penn Treebank.
+## Modelos Implementados
 
-In general, the embeddings are still trained by the models but are initialized using other pre-trained embeddings and therefore use the tokenization from these embeddings (with eventual changes to accomodate tags and possible missing words).
+### RNN (Moisés)
+- **Tagger Baseado em RNN convencional:**
+- **Tagger Baseado em LSTM:**
 
-### Stack
-<!-- Ir colocando as outras bibliotecas usadas ao longo do tempo -->
-All models are developed using TensorFlow/Keras in Python.
+### Transformer (Lucas)
+- **Tagger usando Encoder-Only:**
+- **Parser Generativo usando Decoder-Only:**
+- **Parser Generativo usando Encoder-Decoder:**
 
-### Hyperparameters and Optimizers
-...
+### Pré-Treinado (Jeremias)
+- **Tagging usando uma LLM pré treinada (0-shot):**
+- **Tagging usando uma LLM pré treinada + exemplos estáticos (few-shot):**
+- **Tagging usando uma LLM pré treinada + exemplos dinâmicamente selecionados (RAG):**
 
-### Computational Environment
-Model training was done in a Machine with the following specs
-<!-- Preencher isso daqui com as especificações do hardware usado no treino -->
-
-<!-- TODO: Elaborar uma spec curta do que vai ser implementado e como vai ser implementado -->
-## Models Implemented
-
-### RNN POS Tagger
-
-
-### LSTM POS Tagger
-
-<!-- Ou faz mais sentido Encoder Only? Discutir quais archs fazem sentido utilizar -->
-### Decoder-only Transformer POS Tagger
-
-
-### Encoder-Decoder Transformer Constituency Grammar Parser
-For this architecture specifically 
-
-### RAG
-<!-- TODO: Decidir qual modelo usar e criar o prompt -->
-While not being a model at all, we also took a mainstream, pre-trained model and tried both 0-shot prompting and few-shot prompting. Testing with both the traditional Penn Treebank tags and with random tag names to reduce the impact of training data memorization.
-
-Also actual RAG with embedding of the sentece and searching for relevant sentences from the "traning" (non-hidden) dataset was used.
-
-## Evaluation
-<!-- Parsing da Árvore de Derivação não pode ser avaliada com as métricas tradicionais de ML, diferente de POS tagging, por isso foram usadas métricas diferentes entre as tasks --->
+## Avaliação
 ### POS Tagging
-For Part of Speech Tagging, the eval metrics used for evaluating the models were Accuracy, Precision and F1 Score, a Confusion Matrix for Each Model was also built for a visual overview of the performance of each model as a heatmap.
+Para o modelos de tagging, foi utilizada a Acurácia. Também foi gerada uma Matriz de Confusão para cada modelo para permitir uma visualização geral do desempenho na forma de um mapa de calor (heatmap).
 
-### Constituency Grammar Parsing
-TODO: Search for what metrics to use
+### Parsing da Gramática de Constituites
+Para avaliar o desempenho do analisador sintático, são utilizadas as métricas do padrão **PARSEVAL** (através da biblioteca `evalb` ou similar em Python):
+* **Brackets Precision:** Proporção de constituintes preditos pelo modelo que estão corretos de acordo com a árvore real.
+* **Brackets Recall:** Proporção de constituintes da árvore real que foram identificados corretamente pelo modelo.
+* **F1-Score de Constituintes:** A média harmônica entre a precisão e o recall dos constituintes.
+* **Crossing Brackets:** O número médio de constituintes preditos que se cruzam/sobrepõem incorretamente com os constituintes reais.
