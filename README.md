@@ -6,6 +6,22 @@
 
 Este repositório contém implementações de modelos para POS Tagging e Parsing de Gramática de Constituintes de sentenças. As tags e o dataset são provenientes do Penn [Treebank](https://en.wikipedia.org/wiki/Treebank).
 
+## Desenvolvimento Local
+Para desenvolvimento fora do google collab, também é possível sincronizar as dependências via uv:
+```bash
+uv sync
+```
+
+Ou com pip:
+```bash
+# Crie um venv para esse projeto
+python3 -m venv caminho/para/o/ambiente
+# Ative o ambiente
+source caminho/para/o/ambiente/bin/activate
+# Instale as dependências
+pip install requirements.txt
+```
+
 ## Execução
 Para treinar um modelo:
 ```bash
