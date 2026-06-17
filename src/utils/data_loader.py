@@ -1,6 +1,7 @@
 import os
 
 import nltk
+import numpy as np
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data")
 
@@ -106,6 +107,20 @@ def load_parsing_data():
         "val": {"sentences": X_val, "trees": trees_val},
         "test": {"sentences": X_test, "trees": trees_test},
     }
+
+
+def load_pretrained_embeddings(filepath):
+    """Carrega Embeddings pré treinados para um dicionário."""
+    embeddings_index = {}
+    with open(filepath, encoding="utf-8") as f:
+        for line in f:
+            word, coefs = line.split(maxsplit=1)
+            coefs = np.fromstring(coefs, "f", sep=" ")
+            embeddings_index[word] = coefs
+
+    print(f"Embeddings em ${filepath} carregados com sucesso\n")
+
+    return embeddings_index
 
 
 if __name__ == "__main__":

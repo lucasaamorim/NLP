@@ -35,6 +35,56 @@ Para usar um modelo:
 
 ## Detalhes de Implementação
 
+### Fluxo geral
+
+**Parsers**
+```mermaid
+graph TD
+    A["Dados Crus: constituency(train/test/val).txt"] --> B(load_parsing_data)
+    B --> C(tree_from_file)
+    C --> D(nltk.Tree.fromstring)
+    D --> E(_remove_none_nodes)
+    
+    E --> F[Folhas / Palavras]
+    E --> G[Árvore Sintática Correta]
+    
+    F --> H(Tokenização & Embeddings)
+    H --> I(Padding para o tamanho da maior sentença)
+    G --> J(Padding para o tamanho da maior árvore)
+    
+    I --> K{Parsers Generativos: Transformer}
+    
+    K --> L[Árvore Prevista]
+    
+    L --> M(Avaliação: PARSEVAL / evalb)
+    J --> M
+    M --> N[Brackets Precision & Recall]
+    M --> O[F1-Score]
+    M --> P[Crossing Brackets]
+```
+
+**Taggers:**
+```mermaid
+graph TD
+    A[Dados Crus: train/val/test.txt] --> B(load_tagging_data)
+    B --> C(tagged_sentences_from_file)
+    C --> D{Separar pelos '_'}
+    D --> E[Palavras / Tags]
+    D --> F[Tags Corretas / Targets]
+    
+    E --> G(Tokenização & Embeddings)
+    G --> H(Padding até o tamanho máximo)
+    
+    H --> I{Modelos Tagger: RNN / Transformer / LLM}
+    
+    I --> J[Tags Previstas]
+    
+    J --> K(Avaliação)
+    F --> K
+    K --> L[Acurácia]
+    K --> M[Heatmap da Matriz de Confusão]
+```
+
 ### Pré-processamento de Dados
 **TODO:** Decidir se as sentenças terão algum tipo de normalização (deixar todo o texto minúsculo, remover acentos, etc.) além da adição de padding
 
