@@ -1,6 +1,6 @@
 # Uso de Redes Neurais para Part of Speech Tagging e Parsing de Gramática de Constituintes
 
-- **Jeremias Pinheiro de Araujo Andrade [@?]()**
+- **Jeremias Pinheiro de Araujo Andrade [@Jeremiasp7](https://github.com/Jeremiasp7)**
 - **Lucas Apolonio de Amorim [(@lucasaamorim)](https://github.com/lucasaamorim)**
 - **Moisés Ferreira de Lima [(@moisesferreira123)](https://github.com/moisesferreira123)**
 
@@ -115,13 +115,13 @@ O treinamento dos modelos foi realizado em uma máquina com as seguintes especif
 
 ### Transformer (Lucas)
 - **Tagger usando Encoder-Only:**
-- **Parser Generativo usando Decoder-Only:**
-- **Parser Generativo usando Encoder-Decoder:**
+- **Tagger usando Decoder-Only:**
+- **Tagger usando Encoder-Decoder:**
 
 ### Pré-Treinado (Jeremias)
-- **Tagging usando uma LLM pré treinada (0-shot):**
-- **Tagging usando uma LLM pré treinada + exemplos estáticos (few-shot):**
-- **Tagging usando uma LLM pré treinada + exemplos dinâmicamente selecionados (RAG):**
+- **Parsing Generativo usando uma LLM pré treinada (0-shot):**
+- **Parsing Generativo usando uma LLM pré treinada + exemplos estáticos (few-shot):**
+- **Parsing Generativo usando uma LLM pré treinada + exemplos dinâmicamente selecionados (RAG):**
 
 ## Avaliação
 ### POS Tagging
