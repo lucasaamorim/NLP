@@ -91,9 +91,9 @@ graph TD
 As sentenças e outputs são normalizados para o mesmo comprimento através da concatenação de padding. No caso dos taggers, todos os inputs e outputs tem o mesmo comprimento da sentença mais longa (medido em número de palavras), já no Parser, os inputs tem esse mesmo comprimento mas o output tem o comprimento da maior Árvore Gramatical.
 
 ### Tokenização dos Dados de Entrada e Embeddings
-**TODO:** Ver se vamos usar embeddings que são palavras inteiras ou subwords, caso sejam subwords, comentar sobre como foram resolvidos problemas com relação a tagging de palavras que foram quebradas em dois ou mais tokens.
-
 Em geral, os embeddings continuam sendo treinados pelos modelos, mas são inicializados utilizando outros embeddings pré-treinados e, portanto, utilizam a tokenização proveniente dessas embeddings (com modificações eventuais para acomodar tags e possíveis palavras ausentes).
+
+Para os taggers, foi utilizado somente Embeddings de Palavras inteiras.
 
 ### Stack (Tecnologias)
 Todos os modelos serão desenvolvidos utilizando TensorFlow/Keras em Python.
