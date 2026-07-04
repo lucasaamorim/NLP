@@ -88,6 +88,51 @@ def tokenize_sentences_subwords(sentences, tags, tokenizer, tag_lookup, max_leng
     return X_subwords, np.array(Y_aligned)
 
 
+def build_embedding_matrix(vectorizer, embeddings_index, embedding_dim):
+    """
+    Constrói a matriz de pesos para a EmbeddingLayer do Keras.
+    Faz o cruzamento entre o vocabulário gerado pelo Keras e o dicionário fornecido.
+    OBS: É assumido que o diconário fornecido segue o mesmo formato do GloVe.
+    """
+    vocabulary = vectorizer.get_vocabulary()
+    num_tokens = len(vocabulary)
+
+    # Extrai todos os vetores do GloVe para descobrir o desvio padrão e média
+    all_embs = np.stack(list(embeddings_index.values()))
+    emb_mean, emb_std = all_embs.mean(), all_embs.std()
+
+    # Inicializando a matriz com valores aleatórios seguindo uma distribuição normal baseada
+    # na distribuição do GloVe.
+    embedding_matrix = np.random.normal(emb_mean, emb_std, (num_tokens, embedding_dim))
+
+    # <PAD> não tem significado, logo é tudo zero
+    embedding_matrix[0] = np.zeros(embedding_dim)
+
+    hits = 0
+    misses = 0
+
+    for i, word in enumerate(vocabulary):
+        if i == 0:
+            continue  # Ignora o <PAD>, já zerado
+
+        # O vetor pode não existir no dicionário
+        embedding_vector = embeddings_index.get(word)
+
+        if embedding_vector is not None:
+            # Encontrou: sobrescreve o valor aleatório com o vetor do GloVe
+            embedding_matrix[i] = embedding_vector
+            hits += 1
+        else:
+            # Não encontrou: mantém a inicialização aleatória
+            misses += 1
+
+    print(
+        f"Matriz de Embedding: {hits} tokens encontrados no GloVe | {misses} tokens inicializados aleatoriamente."
+    )
+
+    return embedding_matrix
+
+
 if __name__ == "__main__":
     from data_loader import load_tagging_data
 
@@ -123,3 +168,23 @@ if __name__ == "__main__":
         print(f"\nExemplo da sentença {sample_idx} normalizada: {sample_text}")
         print(f"Vetorização de X[{sample_idx}]:\n {vectorizer([sample_text])}")
         print(f"Vetorização de Y[{sample_idx}]:\n {y_train[sample_idx]}")
+
+    from data_loader import load_pretrained_embeddings
+
+    # Testando a criação da matriz de embeddings
+    print("\n--- Testando Matriz de Embeddings ---")
+    embedding_dim = 50
+    glove_path = f"/home/lucasaamorim/Code/Github/NLP/data/glove.6B/glove.6B.{embedding_dim}d.txt"  # Colocar o caminho para os embeddings do GloVe aqui (coloquei absoluto pq relativo tava bugado)
+
+    try:
+        glove_index = load_pretrained_embeddings(glove_path)
+
+        # Constrói a matriz passando o vectorizer do treino
+        embedding_matrix = build_embedding_matrix(
+            vectorizer, glove_index, embedding_dim
+        )
+
+        print(f"Dimensões da Matriz de Embedding final: {embedding_matrix.shape}")
+
+    except FileNotFoundError:
+        print(f"Arquivo GloVe não encontrado em {glove_path}. Pulei o teste da matriz.")
