@@ -86,14 +86,16 @@ graph TD
 ```
 
 ### Pré-processamento de Dados
-**TODO:** Decidir se as sentenças terão algum tipo de normalização (deixar todo o texto minúsculo, remover acentos, etc.) além da adição de padding
-
 As sentenças e outputs são normalizados para o mesmo comprimento através da concatenação de padding. No caso dos taggers, todos os inputs e outputs tem o mesmo comprimento da sentença mais longa (medido em número de palavras), já no Parser, os inputs tem esse mesmo comprimento mas o output tem o comprimento da maior Árvore Gramatical.
+
+A normalização utilizada foi somente de tornar todos os caracteres minúsculos de maneira indiscriminada (ou seja, até mesmo acrônimos como USA, BoFA, WSJ, etc.).
 
 ### Tokenização dos Dados de Entrada e Embeddings
 Em geral, os embeddings continuam sendo treinados pelos modelos, mas são inicializados utilizando outros embeddings pré-treinados e, portanto, utilizam a tokenização proveniente dessas embeddings (com modificações eventuais para acomodar tags e possíveis palavras ausentes).
 
-Para os taggers, foi utilizado somente Embeddings de Palavras inteiras.
+Para os taggers, foi utilizado somente Embeddings de Palavras inteiras, sendo usado o GloVe6B de referência para a camada de embedding dos modelos.
+
+**TODO:** Especificar se foi testados embeddings de diferentes dimensionalidades, como 50d, 100d, 200d e 300d.
 
 ### Stack (Tecnologias)
 Todos os modelos serão desenvolvidos utilizando TensorFlow/Keras em Python.
