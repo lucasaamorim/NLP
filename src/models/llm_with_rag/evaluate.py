@@ -1,17 +1,3 @@
-"""
-evaluate.py
------------
-Calcula métricas para uma ou mais execuções salvas em results/*.json e
-gera:
-  - acurácia global por token
-  - classification report (precision/recall/f1 por tag)
-  - matriz de confusão (salva como PNG)
-  - tabela comparativa entre modos (se mais de um results/*.json existir)
-
-Uso:
-  python src/evaluate.py --mode zero-shot
-  python src/evaluate.py --compare zero-shot few-shot rag
-"""
 import argparse
 import json
 from pathlib import Path
@@ -29,12 +15,12 @@ def load_results(mode):
 
 def flatten(results):
     """
-    Achata gold/pred em duas listas paralelas de tags, ALINHADAS por token.
-    Sentenças com erro de parsing (status == error) ou com tamanho
-    diferente do esperado são descartadas da métrica de acurácia fina,
-    mas contadas separadamente como "falha de geração" — isso é
-    importante reportar no trabalho, pois é uma limitação real do LLM,
-    não um erro de tagging propriamente dito.
+        Achata gold/pred em duas listas paralelas de tags, alinhadas por token.
+        Sentenças com erro de parsing (status == error) ou com tamanho
+        diferente do esperado são descartadas da métrica de acurácia fina,
+        mas contadas separadamente como "falha de geração" — isso é
+        importante reportar no trabalho, pois é uma limitação real do LLM,
+        não um erro de tagging propriamente dito.
     """
     gold_flat, pred_flat = [], []
     n_malformed = 0
