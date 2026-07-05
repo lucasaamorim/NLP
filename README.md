@@ -7,55 +7,52 @@
 Este repositório contém implementações de modelos para POS Tagging e Parsing de Gramática de Constituintes de sentenças. As tags e o dataset são provenientes do Penn [Treebank](https://en.wikipedia.org/wiki/Treebank).
 
 ## Desenvolvimento Local
-Para desenvolvimento fora do google collab, também é possível sincronizar as dependências via uv:
+Para desenvolvimento fora do Google Colab, sincronize as dependências via uv:
 ```bash
 uv sync
 ```
 
 Ou com pip:
 ```bash
-# Crie um venv para esse projeto
-python3 -m venv caminho/para/o/ambiente
-# Ative o ambiente
-source caminho/para/o/ambiente/bin/activate
-# Instale as dependências
-pip install requirements.txt
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
 ## Execução
-Para treinar um modelo:
+
+Treinar um modelo individual (Transformers):
 ```bash
-...
+python src/models/encoder.py          # Transformer Encoder-Only
+python src/models/decoder.py          # Transformer Decoder-Only
+python src/models/encoder_decoder.py  # Transformer Encoder-Decoder
 ```
 
-Para usar um modelo:
+Treinar todos os modelos sequencialmente (Transformers):
 ```bash
-...
+python src/models/train_all.py
 ```
+
+> Os caminhos para embeddings GloVe nos scripts apontam para `/content/drive/MyDrive/NLP/` (Google Colab). Para execução local, ajuste o `glove_path` para `data/glove.6B/glove.6B.{dim}d.txt`.
 
 ## Detalhes de Implementação
 
 ### Fluxo geral
 
-**Parsers**
+**Parsers:**
 ```mermaid
 graph TD
     A["Dados Crus: constituency(train/test/val).txt"] --> B(load_parsing_data)
     B --> C(tree_from_file)
     C --> D(nltk.Tree.fromstring)
     D --> E(_remove_none_nodes)
-    
     E --> F[Folhas / Palavras]
     E --> G[Árvore Sintática Correta]
-    
     F --> H(Tokenização & Embeddings)
     H --> I(Padding para o tamanho da maior sentença)
     G --> J(Padding para o tamanho da maior árvore)
-    
     I --> K{Parsers Generativos: Transformer}
-    
     K --> L[Árvore Prevista]
-    
     L --> M(Avaliação: PARSEVAL / evalb)
     J --> M
     M --> N[Brackets Precision & Recall]
@@ -71,14 +68,10 @@ graph TD
     C --> D{Separar pelos '_'}
     D --> E[Palavras / Tags]
     D --> F[Tags Corretas / Targets]
-    
     E --> G(Tokenização & Embeddings)
     G --> H(Padding até o tamanho máximo)
-    
     H --> I{Modelos Tagger: RNN / Transformer / LLM}
-    
     I --> J[Tags Previstas]
-    
     J --> K(Avaliação)
     F --> K
     K --> L[Acurácia]
@@ -86,50 +79,51 @@ graph TD
 ```
 
 ### Pré-processamento de Dados
-As sentenças e outputs são normalizados para o mesmo comprimento através da concatenação de padding. No caso dos taggers, todos os inputs e outputs tem o mesmo comprimento da sentença mais longa (medido em número de palavras), já no Parser, os inputs tem esse mesmo comprimento mas o output tem o comprimento da maior Árvore Gramatical.
+As sentenças e outputs são normalizados para o mesmo comprimento através de padding. Nos taggers, inputs e outputs têm o comprimento da sentença mais longa (em número de palavras). No parser, o output tem o comprimento da maior árvore gramatical. A normalização consiste em tornar todos os caracteres minúsculos.
 
-A normalização utilizada foi somente de tornar todos os caracteres minúsculos de maneira indiscriminada (ou seja, até mesmo acrônimos como USA, BoFA, WSJ, etc.).
-
-### Tokenização dos Dados de Entrada e Embeddings
-Em geral, os embeddings continuam sendo treinados pelos modelos, mas são inicializados utilizando outros embeddings pré-treinados e, portanto, utilizam a tokenização proveniente dessas embeddings (com modificações eventuais para acomodar tags e possíveis palavras ausentes).
-
-Para os taggers, foi utilizado somente Embeddings de Palavras inteiras, sendo usado o GloVe6B de referência para a camada de embedding dos modelos.
-
-**TODO:** Especificar se foi testados embeddings de diferentes dimensionalidades, como 50d, 100d, 200d e 300d.
+### Tokenização e Embeddings
+As embeddings são inicializadas com GloVe 6B (300d) e continuam sendo treinadas pelos modelos. Palavras ausentes no vocabulário GloVe são inicializadas com distribuição normal baseada na média e desvio padrão dos vetores GloVe.
 
 ### Stack (Tecnologias)
-Todos os modelos serão desenvolvidos utilizando TensorFlow/Keras em Python.
+TensorFlow / Keras (com keras-nlp e keras-hub).
 
-### Hiperparâmetros e Otimizadores
-**TODO:** Decidir Otimizador utilizado, learning rate, loss function, batch size e critério de parada.
+### Hiperparâmetros
+**Para os Transformers:**
+- **Otimizador:** AdamW (`learning_rate=0.001`)
+- **Loss:** `SparseCategoricalCrossentropy`
+- **Batch size:** 32
+- **Critério de parada:** EarlyStopping no `val_masked_acc`, patience=3, restore_best_weights
+- **Dimensão de embedding:** 300 (GloVe 6B)
+- **Específicos do Transformer** `intermediate_dim=256, num_heads=4, dropout=0.2–0.3`
 
 ### Ambiente Computacional
-O treinamento dos modelos foi realizado em uma máquina com as seguintes especificações:
-...
+Os modelos foram treinados usando uma GPU Nvidia Tesla T4 via Google Colab.
 
 ## Modelos Implementados
 
-### RNN (Moisés)
-- **Tagger Baseado em RNN convencional:**
-- **Tagger Baseado em LSTM:**
-
 ### Transformer (Lucas)
-- **Tagger usando Encoder-Only:**
-- **Tagger usando Decoder-Only:**
-- **Tagger usando Encoder-Decoder:**
+Arquiteturas de Transformer para POS Tagging, utilizando embeddings GloVe 6B 300d e métrica customizada `MaskedAccuracy` (ignora padding, subwords excedentes e pontuações):
 
-### Pré-Treinado (Jeremias)
-- **Parsing Generativo usando uma LLM pré treinada (0-shot):**
-- **Parsing Generativo usando uma LLM pré treinada + exemplos estáticos (few-shot):**
-- **Parsing Generativo usando uma LLM pré treinada + exemplos dinâmicamente selecionados (RAG):**
+- **Encoder-Only:** 2 blocos `TransformerEncoder` + classificação softmax por token. (~`src/models/encoder.py`)
+- **Decoder-Only:** 1 bloco `TransformerDecoder` causal + classificação softmax por token. (~`src/models/decoder.py`)
+- **Encoder-Decoder:** Encoder processa a sentença, Decoder gera as tags usando teacher forcing (`[START]` como primeiro token). Embedding de palavras (300d) e de tags (64d) separadas. (~`src/models/encoder_decoder.py`)
+
+### RNN (Moisés) — pendente
+- **Tagger Baseado em RNN convencional:** notebooks `rnn.ipynb` e `lstm.ipynb` (stubs)
+
+### Pré-Treinado (Jeremias) — planejado
+- **Parsing Generativo usando uma LLM pré-treinada (0-shot):**
+- **Parsing Generativo usando uma LLM pré-treinada + exemplos estáticos (few-shot):**
+- **Parsing Generativo usando uma LLM pré-treinada + exemplos dinamicamente selecionados (RAG):**
 
 ## Avaliação
-### POS Tagging
-Para o modelos de tagging, foi utilizada a Acurácia. Também foi gerada uma Matriz de Confusão para cada modelo para permitir uma visualização geral do desempenho na forma de um mapa de calor (heatmap).
 
-### Parsing da Gramática de Constituites
-Para avaliar o desempenho do analisador sintático, são utilizadas as métricas do padrão **PARSEVAL** (através da biblioteca `evalb` ou similar em Python):
-* **Brackets Precision:** Proporção de constituintes preditos pelo modelo que estão corretos de acordo com a árvore real.
-* **Brackets Recall:** Proporção de constituintes da árvore real que foram identificados corretamente pelo modelo.
-* **F1-Score de Constituintes:** A média harmônica entre a precisão e o recall dos constituintes.
-* **Crossing Brackets:** O número médio de constituintes preditos que se cruzam/sobrepõem incorretamente com os constituintes reais.
+### POS Tagging
+Acurácia mascarada (`MaskedAccuracy`) que ignora padding e pontuações. Matriz de Confusão (heatmap) para visualização geral do desempenho.
+
+### Parsing da Gramática de Constituintes
+Métricas do padrão **PARSEVAL** (via `evalb` ou similar):
+* **Brackets Precision:** Proporção de constituintes preditos corretos.
+* **Brackets Recall:** Proporção de constituintes reais identificados.
+* **F1-Score de Constituintes:** Média harmônica de precisão e recall.
+* **Crossing Brackets:** Constituintes preditos que se cruzam incorretamente com os reais.
