@@ -1,7 +1,7 @@
 import keras
 import numpy as np
 import tensorflow as tf
-from keras.layers import StringLookup, TextVectorization
+from keras.layers import TextVectorization
 
 
 def custom_standardization(input_string: str):
@@ -28,28 +28,49 @@ def tokenize_sentences(sentences, max_vocab_size=2000):
     return vectorizer, max_length
 
 
-def vectorize_tags(tags, max_length):
-    """
-    Mapeia as strings das tags para IDs inteiros e aplica o padding correspondente.
-    """
-    all_tags = [tag for sentence in tags for tag in sentence]
+def vectorize_tags(tags_lists, max_len, existing_lookup=None, return_shifted=False):
+    cleaned_tags = [[str(tag).strip() for tag in sentence] for sentence in tags_lists]
 
-    tag_lookup = StringLookup(mask_token="<PAD>")
-    tag_lookup.adapt(all_tags)
+    if existing_lookup is None:
+        vocab = sorted(
+            list(set([tag for sentence in cleaned_tags for tag in sentence]))
+        )
 
-    Y_vectorized = []
-    for sentence_tags in tags:
-        tag_ids = tag_lookup(sentence_tags)
+        # Injeta o token especial [START] no vocabulário se precisarmos fazer seq2seq
+        if return_shifted and "[START]" not in vocab:
+            vocab.insert(0, "[START]")
 
-        pad_length = max_length - len(tag_ids)
-        if pad_length > 0:
-            padded_tags = keras.ops.pad(tag_ids, [[0, pad_length]])
+        tag_lookup = keras.layers.StringLookup(
+            vocabulary=vocab, mask_token="[PAD]", num_oov_indices=1, name="tag_lookup"
+        )
+    else:
+        tag_lookup = existing_lookup
+
+    padded_tags = []
+    shifted_tags = []
+
+    for sentence in cleaned_tags:
+        if len(sentence) > max_len:
+            padded_tags.append(sentence[:max_len])
         else:
-            padded_tags = tag_ids
+            padded_tags.append(sentence + ["[PAD]"] * (max_len - len(sentence)))
 
-        Y_vectorized.append(padded_tags)
+        if return_shifted:
+            if len(sentence) > max_len - 1:
+                shifted = ["[START]"] + sentence[: max_len - 1]
+            else:
+                shifted = (
+                    ["[START]"] + sentence + ["[PAD]"] * (max_len - 1 - len(sentence))
+                )
+            shifted_tags.append(shifted)
 
-    return tag_lookup, np.array(Y_vectorized)
+    Y = np.array(tag_lookup(padded_tags))
+
+    if return_shifted:
+        Y_shifted = np.array(tag_lookup(shifted_tags))
+        return tag_lookup, Y, Y_shifted
+
+    return tag_lookup, Y
 
 
 def tokenize_sentences_subwords(sentences, tags, tokenizer, tag_lookup, max_length):
@@ -92,17 +113,14 @@ def build_embedding_matrix(vectorizer, embeddings_index, embedding_dim):
     """
     Constrói a matriz de pesos para a EmbeddingLayer do Keras.
     Faz o cruzamento entre o vocabulário gerado pelo Keras e o dicionário fornecido.
-    OBS: É assumido que o diconário fornecido segue o mesmo formato do GloVe.
+    OBS: É assumido que o dicionário fornecido segue o mesmo formato do GloVe.
     """
     vocabulary = vectorizer.get_vocabulary()
     num_tokens = len(vocabulary)
 
-    # Extrai todos os vetores do GloVe para descobrir o desvio padrão e média
     all_embs = np.stack(list(embeddings_index.values()))
     emb_mean, emb_std = all_embs.mean(), all_embs.std()
 
-    # Inicializando a matriz com valores aleatórios seguindo uma distribuição normal baseada
-    # na distribuição do GloVe.
     embedding_matrix = np.random.normal(emb_mean, emb_std, (num_tokens, embedding_dim))
 
     # <PAD> não tem significado, logo é tudo zero
@@ -113,17 +131,13 @@ def build_embedding_matrix(vectorizer, embeddings_index, embedding_dim):
 
     for i, word in enumerate(vocabulary):
         if i == 0:
-            continue  # Ignora o <PAD>, já zerado
+            continue  # ignora <PAD>
 
-        # O vetor pode não existir no dicionário
         embedding_vector = embeddings_index.get(word)
-
         if embedding_vector is not None:
-            # Encontrou: sobrescreve o valor aleatório com o vetor do GloVe
             embedding_matrix[i] = embedding_vector
             hits += 1
         else:
-            # Não encontrou: mantém a inicialização aleatória
             misses += 1
 
     print(
@@ -137,23 +151,17 @@ if __name__ == "__main__":
     from data_loader import load_tagging_data
 
     print("Carregando dados para teste...")
-    # Carregando os dados relevantes para os taggers (train, val, test)
     data = load_tagging_data()
     train_sentences = data["train"]["sentences"]
     train_tags = data["train"]["tags"]
 
     print(f"Total de sentenças de treino carregadas: {len(train_sentences)}")
 
-    # 1. Tokenização de Palavras Inteiras
     print("\n--- Testando Tokenização de Palavras Inteiras ---")
-    # Lembrando que o segundo parâmtro determina um limite no tamanho do vocabulário
-    # 2k palavras é muito menor que o vocabulário do PTB, então é razoavelmente comum encontrar tokens UNK
-    # Caso n seja passado um limite explícito (ou o limite seja baixo)
     vectorizer, max_len = tokenize_sentences(train_sentences, 100000)
     print(f"Tamanho máximo da sentença calculado: {max_len}")
     print(f"Tamanho do vocabulário de palavras: {vectorizer.vocabulary_size()}")
 
-    # 2. Vetorização das Tags
     print("\n--- Testando Vetorização das Tags ---")
     tag_lookup, y_train = vectorize_tags(train_tags, max_len)
     print(f"Tamanho do vocabulário de tags: {tag_lookup.vocabulary_size()}")
@@ -161,7 +169,6 @@ if __name__ == "__main__":
 
     print("PSA: <PAD> é o índice 0 e <UNK> é o índice 1")
 
-    # 3. Exibindo resultados do primeiro elemento do batch
     if len(train_sentences) > 0:
         sample_idx = 0
         sample_text = " ".join(train_sentences[sample_idx]).lower()
@@ -171,20 +178,15 @@ if __name__ == "__main__":
 
     from data_loader import load_pretrained_embeddings
 
-    # Testando a criação da matriz de embeddings
     print("\n--- Testando Matriz de Embeddings ---")
     embedding_dim = 50
-    glove_path = f"/home/lucasaamorim/Code/Github/NLP/data/glove.6B/glove.6B.{embedding_dim}d.txt"  # Colocar o caminho para os embeddings do GloVe aqui (coloquei absoluto pq relativo tava bugado)
+    glove_path = f"/home/lucasaamorim/Code/Github/NLP/data/glove.6B/glove.6B.{embedding_dim}d.txt"
 
     try:
         glove_index = load_pretrained_embeddings(glove_path)
-
-        # Constrói a matriz passando o vectorizer do treino
         embedding_matrix = build_embedding_matrix(
             vectorizer, glove_index, embedding_dim
         )
-
         print(f"Dimensões da Matriz de Embedding final: {embedding_matrix.shape}")
-
     except FileNotFoundError:
         print(f"Arquivo GloVe não encontrado em {glove_path}. Pulei o teste da matriz.")

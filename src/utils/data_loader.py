@@ -7,10 +7,7 @@ DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data")
 
 
 def tagged_sentences_from_file(filename: str):
-    """Extrai listas de sentenças e tags de um arquivo.
-
-    @return Uma lista de palavras X e uma lista de tags Y
-    """
+    """Extrai listas de sentenças e tags de um arquivo."""
 
     path = os.path.join(DATA_DIR, filename)
     with open(path) as file:
@@ -46,8 +43,6 @@ def tree_from_file(filename: str):
     """Extrai a lista de sentenças e as árvores sintáticas de um arquivo.
 
     Cada linha do arquivo contém uma árvore no formato do Penn Treebank.
-
-    @return Uma lista de palavras X e uma lista de árvores Y
     """
 
     path = os.path.join(DATA_DIR, filename)
@@ -72,12 +67,7 @@ def tree_from_file(filename: str):
 
 
 def load_tagging_data():
-    """Carrega os Dados Relevantes para os taggers.
-
-    @return 3 dicionários (train,val, test), onde cada um contém as entradas:
-        - 'sentences': Lista de sentenças
-        - 'tags': Lista de tags de cada sentença
-    """
+    """Carrega os dados relevantes para os taggers."""
 
     X_train, Y_train = tagged_sentences_from_file("train0-18.txt")
     X_val, Y_val = tagged_sentences_from_file("val19-21.txt")
@@ -91,12 +81,7 @@ def load_tagging_data():
 
 
 def load_parsing_data():
-    """Carrega os dados para os parsers.
-
-    @return 3 dicionários (train, val, test), onde cada um contém as entradas:
-        - 'sentences': Lista de palavras
-        - 'tree': Árvore sintática de cada sentença
-    """
+    """Carrega os dados para os parsers."""
 
     X_train, trees_train = tree_from_file("train_constituency_0-18.txt")
     X_val, trees_val = tree_from_file("val_constituency_19-21.txt")
@@ -118,7 +103,7 @@ def load_pretrained_embeddings(filepath):
             coefs = np.fromstring(coefs, "f", sep=" ")
             embeddings_index[word] = coefs
 
-    print(f"Embeddings em ${filepath} carregados com sucesso\n")
+    print(f"Embeddings em {filepath} carregados com sucesso\n")
 
     return embeddings_index
 
