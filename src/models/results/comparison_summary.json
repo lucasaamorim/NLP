@@ -1,0 +1,23 @@
+[
+  {
+    "mode": "zero-shot",
+    "accuracy": 0.9175093134646088,
+    "n_tokens": 1879,
+    "n_malformed": 15,
+    "n_total_sents": 100
+  },
+  {
+    "mode": "few-shot",
+    "accuracy": 0.939117199391172,
+    "n_tokens": 1971,
+    "n_malformed": 11,
+    "n_total_sents": 100
+  },
+  {
+    "mode": "rag",
+    "accuracy": 0.9438747976254722,
+    "n_tokens": 1853,
+    "n_malformed": 14,
+    "n_total_sents": 100
+  }
+]
