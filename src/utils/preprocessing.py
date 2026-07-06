@@ -28,29 +28,37 @@ def tokenize_sentences(sentences, max_vocab_size=2000):
     return vectorizer, max_length
 
 
-def vectorize_tags(tags, max_length):
-    """
-    Mapeia as strings das tags para IDs inteiros e aplica o padding correspondente.
-    """
-    all_tags = [tag for sentence in tags for tag in sentence]
+def vectorize_tags(tags_lists, max_len, existing_lookup=None):
+    # 1. Limpeza Rigorosa: Remove espaços em branco invisíveis de TODAS as tags
+    cleaned_tags = [[str(tag).strip() for tag in sentence] for sentence in tags_lists]
 
-    tag_lookup = StringLookup(mask_token="<PAD>")
-    tag_lookup.adapt(all_tags)
+    # 2. Cria o Vocabulário APENAS se for o conjunto de treino
+    if existing_lookup is None:
+        vocab = sorted(
+            list(set([tag for sentence in cleaned_tags for tag in sentence]))
+        )
 
-    Y_vectorized = []
-    for sentence_tags in tags:
-        tag_ids = tag_lookup(sentence_tags)
+        tag_lookup = keras.layers.StringLookup(
+            vocabulary=vocab,
+            mask_token="[PAD]",
+            num_oov_indices=1,  # Desconhecidos vão para o índice 1
+            name="tag_lookup",
+        )
+    else:
+        tag_lookup = existing_lookup
 
-        pad_length = max_length - len(tag_ids)
-        if pad_length > 0:
-            padded_tags = keras.ops.pad(tag_ids, [[0, pad_length]])
+    # 3. Padding Manual
+    padded_tags = []
+    for sentence in cleaned_tags:
+        if len(sentence) > max_len:
+            padded_tags.append(sentence[:max_len])
         else:
-            padded_tags = tag_ids
+            padded_tags.append(sentence + ["[PAD]"] * (max_len - len(sentence)))
 
-        Y_vectorized.append(padded_tags)
+    # 4. Converte para array numérico de forma segura para a GPU
+    Y = np.array(tag_lookup(padded_tags))
 
-    return tag_lookup, np.array(Y_vectorized)
-
+    return tag_lookup, Y
 
 def tokenize_sentences_subwords(sentences, tags, tokenizer, tag_lookup, max_length):
     """
