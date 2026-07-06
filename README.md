@@ -1,10 +1,10 @@
-# Uso de Redes Neurais para Part of Speech Tagging e Parsing de Gramática de Constituintes
+# Uso de Redes Neurais para Part of Speech Tagging
 
 - **Jeremias Pinheiro de Araujo Andrade [@Jeremiasp7](https://github.com/Jeremiasp7)**
 - **Lucas Apolonio de Amorim [(@lucasaamorim)](https://github.com/lucasaamorim)**
 - **Moisés Ferreira de Lima [(@moisesferreira123)](https://github.com/moisesferreira123)**
 
-Este repositório contém implementações de modelos para POS Tagging e Parsing de Gramática de Constituintes de sentenças. As tags e o dataset são provenientes do Penn [Treebank](https://en.wikipedia.org/wiki/Treebank).
+Este repositório contém implementações de modelos para POS Tagging. As tags e o dataset são provenientes do Penn [Treebank](https://en.wikipedia.org/wiki/Treebank).
 
 ## Desenvolvimento Local
 Para desenvolvimento fora do Google Colab, sincronize as dependências via uv:
@@ -38,28 +38,6 @@ python src/models/train_all.py
 ## Detalhes de Implementação
 
 ### Fluxo geral
-
-**Parsers:**
-```mermaid
-graph TD
-    A["Dados Crus: constituency(train/test/val).txt"] --> B(load_parsing_data)
-    B --> C(tree_from_file)
-    C --> D(nltk.Tree.fromstring)
-    D --> E(_remove_none_nodes)
-    E --> F[Folhas / Palavras]
-    E --> G[Árvore Sintática Correta]
-    F --> H(Tokenização & Embeddings)
-    H --> I(Padding para o tamanho da maior sentença)
-    G --> J(Padding para o tamanho da maior árvore)
-    I --> K{Parsers Generativos: Transformer}
-    K --> L[Árvore Prevista]
-    L --> M(Avaliação: PARSEVAL / evalb)
-    J --> M
-    M --> N[Brackets Precision & Recall]
-    M --> O[F1-Score]
-    M --> P[Crossing Brackets]
-```
-
 **Taggers:**
 ```mermaid
 graph TD
@@ -70,7 +48,7 @@ graph TD
     D --> F[Tags Corretas / Targets]
     E --> G(Tokenização & Embeddings)
     G --> H(Padding até o tamanho máximo)
-    H --> I{Modelos Tagger: RNN / Transformer / LLM}
+    H --> I{Modelos Tagger: RNN / Transformer}
     I --> J[Tags Previstas]
     J --> K(Avaliação)
     F --> K
@@ -79,13 +57,13 @@ graph TD
 ```
 
 ### Pré-processamento de Dados
-As sentenças e outputs são normalizados para o mesmo comprimento através de padding. Nos taggers, inputs e outputs têm o comprimento da sentença mais longa (em número de palavras). No parser, o output tem o comprimento da maior árvore gramatical. A normalização consiste em tornar todos os caracteres minúsculos.
+As sentenças e outputs são normalizados para o mesmo comprimento através de padding. Nos taggers, inputs e outputs têm o comprimento da sentença mais longa (em número de palavras).
 
 ### Tokenização e Embeddings
 As embeddings são inicializadas com GloVe 6B (300d) e continuam sendo treinadas pelos modelos. Palavras ausentes no vocabulário GloVe são inicializadas com distribuição normal baseada na média e desvio padrão dos vetores GloVe.
 
 ### Stack (Tecnologias)
-TensorFlow / Keras (com keras-nlp e keras-hub).
+TensorFlow / Keras (com keras-nlp e keras-hub), scikit-learn e numpy.
 
 ### Hiperparâmetros
 **Para os Transformers:**
@@ -112,9 +90,9 @@ Arquiteturas de Transformer para POS Tagging, utilizando embeddings GloVe 6B 300
 - **Tagger Baseado em RNN convencional:** notebooks `rnn.ipynb` e `lstm.ipynb` (stubs)
 
 ### Pré-Treinado (Jeremias) — planejado
-- **Parsing Generativo usando uma LLM pré-treinada (0-shot):**
-- **Parsing Generativo usando uma LLM pré-treinada + exemplos estáticos (few-shot):**
-- **Parsing Generativo usando uma LLM pré-treinada + exemplos dinamicamente selecionados (RAG):**
+- **POS Tagging Generativo usando uma LLM pré-treinada (0-shot):**
+- **POS Tagging Generativo usando uma LLM pré-treinada + exemplos estáticos (few-shot):**
+- **POS Tagging Generativo usando uma LLM pré-treinada + exemplos dinamicamente selecionados (RAG):**
 
 ## Avaliação
 
