@@ -98,7 +98,7 @@ if __name__ == "__main__":
         X_train,
         Y_train,
         validation_data=(X_val, Y_val),
-        epochs=1,
+        epochs=30,
         batch_size=32,
         verbose=1,
         callbacks=[early_stopping],

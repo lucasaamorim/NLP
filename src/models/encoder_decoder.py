@@ -141,7 +141,7 @@ if __name__ == "__main__":
         x=[X_train, Y_train_shifted],
         y=Y_train,
         validation_data=([X_val, Y_val_shifted], Y_val),
-        epochs=1,
+        epochs=30,
         batch_size=32,
         verbose=1,
         callbacks=[early_stopping],
