@@ -198,7 +198,10 @@ class MaskedAccuracy(keras.metrics.Metric):
         self.total = self.add_weight(name="total", initializer="zeros")
 
     def update_state(self, y_true, y_pred, sample_weight=None):
-        y_pred_classes = ops.argmax(y_pred, axis=-1)
+        if len(y_pred.shape) == 3:
+            y_pred_classes = ops.argmax(y_pred, axis=-1)
+        else:
+            y_pred_classes = y_pred
 
         y_true = ops.cast(y_true, dtype=y_pred_classes.dtype)
 
