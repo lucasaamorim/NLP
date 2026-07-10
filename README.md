@@ -63,13 +63,13 @@ python -m src.utils.evaluation --compare zero-shot few-shot rag
 
 Com **uv** (recomendado):
 ```bash
-git clone <repo-url> && cd NLP
+git clone https://github.com/lucasaamorim/NLP && cd NLP
 uv sync
 ```
 
 Com **pip**:
 ```bash
-git clone <repo-url> && cd NLP
+git clone https://github.com/lucasaamorim/NLP/ && cd NLP
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -140,7 +140,7 @@ os.makedirs(glove_dir, exist_ok=True)
 ### 4. Clonar o repositório
 
 ```python
-!git clone https://github.com/<seu-usuario>/NLP.git /content/drive/MyDrive/NLP/repo
+!git clone https://github.com/lucasaamorim/NLP.git /content/drive/MyDrive/NLP/repo
 %cd /content/drive/MyDrive/NLP/repo
 ```
 
@@ -286,5 +286,3 @@ python -m src.utils.evaluation --mode zero-shot          # avalia um modo
 python -m src.utils.evaluation --compare zero-shot few-shot rag  # tabela comparativa
 ```
 Os resultados são salvos em `src/models/results/*.json` e as matrizes em `src/models/results/confusion_matrix_*.png`. Um resumo comparativo é gerado em `src/models/results/comparison_summary.json`.
-
-

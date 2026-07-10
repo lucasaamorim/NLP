@@ -1,9 +1,161 @@
+import os
+import re
+import subprocess
+import tempfile
+
 import keras
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
 from keras import ops
 from sklearn.metrics import confusion_matrix
+
+EVALB_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "EVALB")
+EVALB_BIN = os.path.join(EVALB_DIR, "evalb")
+EVALB_PRM = os.path.join(EVALB_DIR, "COLLINS.prm")
+
+
+def _recover_tree(pred_str):
+    pred_str = pred_str.strip()
+    if not pred_str:
+        return ""
+    first = pred_str.find("(")
+    last = pred_str.rfind(")")
+    if first == -1 or last <= first:
+        return ""
+    tree = pred_str[first : last + 1]
+    missing = tree.count("(") - tree.count(")")
+    if missing > 0:
+        tree += ")" * missing
+    return tree
+
+
+def run_evalb(predicted_trees, gold_trees, param_file=None):
+    if param_file is None:
+        param_file = EVALB_PRM
+
+    if not predicted_trees and not gold_trees:
+        return {
+            "recall": 0.0, "precision": 0.0, "fmeasure": 0.0,
+            "complete_match": 0.0, "avg_crossing": 0.0,
+            "no_crossing": 0.0, "tagging_accuracy": 0.0,
+            "n_valid": 0, "n_error": 0, "n_skip": 0,
+        }
+
+    recovered = []
+    n_errors = 0
+    for pred in predicted_trees:
+        r = _recover_tree(pred)
+        if not r:
+            n_errors += 1
+            r = "(" + " ".join(gold_trees[0].split()) + ")" if gold_trees else ""
+        recovered.append(r)
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".gld", delete=False) as gf:
+        for tree in gold_trees:
+            gf.write(tree + "\n")
+        gold_path = gf.name
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".tst", delete=False) as tf:
+        for tree in recovered:
+            tf.write(tree + "\n")
+        test_path = tf.name
+
+    try:
+        result = subprocess.run(
+            [EVALB_BIN, "-p", param_file, gold_path, test_path],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        stdout = result.stdout + result.stderr
+    except (subprocess.TimeoutExpired, FileNotFoundError) as e:
+        print(f"[evalb] Erro ao executar evalb: {e}")
+        os.unlink(gold_path)
+        os.unlink(test_path)
+        return {
+            "recall": 0.0, "precision": 0.0, "fmeasure": 0.0,
+            "complete_match": 0.0, "avg_crossing": 0.0,
+            "no_crossing": 0.0, "tagging_accuracy": 0.0,
+            "n_valid": 0, "n_error": len(predicted_trees), "n_skip": 0,
+        }
+
+    os.unlink(gold_path)
+    os.unlink(test_path)
+
+    metrics = {
+        "recall": 0.0, "precision": 0.0, "fmeasure": 0.0,
+        "complete_match": 0.0, "avg_crossing": 0.0,
+        "no_crossing": 0.0, "tagging_accuracy": 0.0,
+        "n_valid": 0, "n_error": n_errors, "n_skip": 0,
+    }
+
+    summary_started = False
+    for line in stdout.splitlines():
+        if line.strip().startswith("-- All --"):
+            summary_started = True
+            continue
+        if not summary_started:
+            continue
+        if line.strip().startswith("Number of sentence"):
+            m = re.search(r"=\s*(\d+)", line)
+            if m:
+                metrics["n_valid"] = int(m.group(1))
+        elif line.strip().startswith("Number of Error sentence"):
+            m = re.search(r"=\s*(\d+)", line)
+            if m:
+                metrics["n_error"] += int(m.group(1))
+        elif line.strip().startswith("Number of Skip  sentence"):
+            m = re.search(r"=\s*(\d+)", line)
+            if m:
+                metrics["n_skip"] = int(m.group(1))
+        elif line.strip().startswith("Bracketing Recall"):
+            m = re.search(r"=\s*([\d.]+)", line)
+            if m:
+                metrics["recall"] = float(m.group(1))
+        elif line.strip().startswith("Bracketing Precision"):
+            m = re.search(r"=\s*([\d.]+)", line)
+            if m:
+                metrics["precision"] = float(m.group(1))
+        elif line.strip().startswith("Bracketing FMeasure"):
+            m = re.search(r"=\s*([\d.]+)", line)
+            if m:
+                metrics["fmeasure"] = float(m.group(1))
+        elif line.strip().startswith("Complete match"):
+            m = re.search(r"=\s*([\d.]+)", line)
+            if m:
+                metrics["complete_match"] = float(m.group(1))
+        elif line.strip().startswith("Average crossing"):
+            m = re.search(r"=\s*([\d.]+)", line)
+            if m:
+                metrics["avg_crossing"] = float(m.group(1))
+        elif line.strip().startswith("No crossing"):
+            m = re.search(r"=\s*([\d.]+)", line)
+            if m:
+                metrics["no_crossing"] = float(m.group(1))
+        elif line.strip().startswith("Tagging accuracy"):
+            m = re.search(r"=\s*([\d.]+)", line)
+            if m:
+                metrics["tagging_accuracy"] = float(m.group(1))
+    return metrics
+
+
+def print_evalb_results(metrics):
+    print("\n" + "=" * 50)
+    print(" PARSEVAL Results (EVALB / COLLINS.prm)")
+    print("=" * 50)
+    print(f"  Valid sentences:       {metrics['n_valid']}")
+    print(f"  Error sentences:       {metrics['n_error']}")
+    print(f"  Skip sentences:        {metrics['n_skip']}")
+    print(f"  Bracketing Recall:     {metrics['recall']:.2f}")
+    print(f"  Bracketing Precision:  {metrics['precision']:.2f}")
+    print(f"  Bracketing FMeasure:   {metrics['fmeasure']:.2f}")
+    print(f"  Complete match:        {metrics['complete_match']:.2f}%")
+    print(f"  Average crossing:      {metrics['avg_crossing']:.2f}")
+    print(f"  No crossing:           {metrics['no_crossing']:.2f}%")
+    print(f"  Tagging accuracy:      {metrics['tagging_accuracy']:.2f}")
+    print("=" * 50 + "\n")
+    return metrics
 
 
 def get_ignore_indices(tag_lookup):
@@ -46,7 +198,10 @@ class MaskedAccuracy(keras.metrics.Metric):
         self.total = self.add_weight(name="total", initializer="zeros")
 
     def update_state(self, y_true, y_pred, sample_weight=None):
-        y_pred_classes = ops.argmax(y_pred, axis=-1)
+        if len(y_pred.shape) == 3:
+            y_pred_classes = ops.argmax(y_pred, axis=-1)
+        else:
+            y_pred_classes = y_pred
 
         y_true = ops.cast(y_true, dtype=y_pred_classes.dtype)
 

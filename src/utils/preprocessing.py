@@ -109,6 +109,92 @@ def tokenize_sentences_subwords(sentences, tags, tokenizer, tag_lookup, max_leng
     return X_subwords, np.array(Y_aligned)
 
 
+def build_char_vocabulary(tree_strings, sentence_strings=None):
+    chars = set()
+    for s in tree_strings:
+        chars.update(s)
+    if sentence_strings:
+        for s in sentence_strings:
+            chars.update(s)
+    vocab = ["[PAD]", "[UNK]", "[START]", "[END]", "[SEP]"] + sorted(chars)
+    return keras.layers.StringLookup(
+        vocabulary=vocab,
+        mask_token="[PAD]",
+        num_oov_indices=1,
+        name="char_lookup",
+    )
+
+
+def encode_char_sequences(strings, char_lookup, max_len, return_shifted=False):
+    pad_id = 0
+    start_id = int(char_lookup("[START]").numpy())
+    end_id = int(char_lookup("[END]").numpy())
+    unk_id = int(char_lookup("[UNK]").numpy())
+
+    Y = np.full((len(strings), max_len), pad_id, dtype=np.int32)
+    Y_shifted = (
+        np.full((len(strings), max_len), pad_id, dtype=np.int32)
+        if return_shifted
+        else None
+    )
+
+    for i, s in enumerate(strings):
+        ids = [int(char_lookup(c).numpy()) for c in s]
+        ids = ids[:max_len]
+        Y[i, : len(ids)] = ids
+
+        if return_shifted:
+            y_ids = ids + [end_id]
+            y_ids = y_ids[:max_len]
+            Y[i, : len(y_ids)] = y_ids
+
+            s_ids = [start_id] + y_ids[:-1]
+            Y_shifted[i, : min(len(s_ids), max_len)] = s_ids[:max_len]
+
+    if return_shifted:
+        return Y, Y_shifted
+    return Y
+
+
+def encode_decoder_only_sequences(sentences, tree_strings, char_lookup, max_len):
+    pad_id = 0
+    sep_id = int(char_lookup("[SEP]").numpy())
+    end_id = int(char_lookup("[END]").numpy())
+
+    X = np.full((len(sentences), max_len), pad_id, dtype=np.int32)
+    Y = np.full((len(sentences), max_len), pad_id, dtype=np.int32)
+    loss_mask = np.zeros((len(sentences), max_len), dtype=np.int32)
+
+    for i, (words, tree) in enumerate(zip(sentences, tree_strings)):
+        sent_str = " ".join(words)
+        full = sent_str + "[SEP]" + tree + "[END]"
+        ids = [int(char_lookup(c).numpy()) for c in full]
+        ids = ids[:max_len]
+
+        X[i, : len(ids)] = ids
+        Y[i, : len(ids) - 1] = ids[1:max_len]
+
+        sep_positions = [j for j, idx in enumerate(ids) if idx == sep_id]
+        first_after_sep = sep_positions[0] + 1 if sep_positions else len(ids)
+        for j in range(first_after_sep, min(len(ids), max_len)):
+            loss_mask[i, j] = 1
+
+    return X, Y, loss_mask
+
+
+def decode_char_sequence(indices, char_vocab):
+    chars = []
+    for idx in indices:
+        idx = int(idx)
+        if idx == 0:
+            break
+        token = char_vocab[idx]
+        if token in ("[START]", "[END]", "[SEP]", "[PAD]", "[UNK]"):
+            continue
+        chars.append(token)
+    return "".join(chars)
+
+
 def build_embedding_matrix(vectorizer, embeddings_index, embedding_dim):
     """
     Constrói a matriz de pesos para a EmbeddingLayer do Keras.

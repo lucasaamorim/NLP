@@ -39,6 +39,41 @@ def _remove_none_nodes(tree):
     return tree
 
 
+def _strip_functional_tags(tree):
+    """Remove tags funcionais (NP-SBJ -> NP) da árvore."""
+    label = tree.label()
+    if not label.startswith("-"):
+        for sep in ("-", "="):
+            idx = label.find(sep)
+            if idx != -1:
+                tree.set_label(label[:idx])
+                break
+    for child in tree:
+        if isinstance(child, nltk.Tree):
+            _strip_functional_tags(child)
+
+
+def _remove_empty_nodes(tree):
+    for i in range(len(tree) - 1, -1, -1):
+        if isinstance(tree[i], nltk.Tree):
+            _remove_empty_nodes(tree[i])
+            if len(tree[i]) == 0:
+                tree.pop(i)
+
+
+def tree_to_bracket_string(tree):
+    """Converte nltk.Tree para string de brackets linearizada.
+
+    Remove functional tags (NP-SBJ -> NP), empty nodes (leftovers from
+    -NONE- removal), and produces a single-line S-expression.
+    """
+    tree = tree.copy(deep=True)
+    tree.set_label("TOP")
+    _strip_functional_tags(tree)
+    _remove_empty_nodes(tree)
+    return tree.pformat(margin=10 ** 9)
+
+
 def tree_from_file(filename: str):
     """Extrai a lista de sentenças e as árvores sintáticas de um arquivo.
 
@@ -54,6 +89,7 @@ def tree_from_file(filename: str):
             line = line.strip()
             if not line:
                 continue
+            # Artefato da formatação do arquivo
             for tree_str in line.replace("))(TOP", "))\n(TOP").splitlines():
                 tree_str = tree_str.strip()
                 if not tree_str:
@@ -87,10 +123,26 @@ def load_parsing_data():
     X_val, trees_val = tree_from_file("val_constituency_19-21.txt")
     X_test, trees_test = tree_from_file("test_constituency_22-24.txt")
 
+    train_strs = [tree_to_bracket_string(t) for t in trees_train]
+    val_strs = [tree_to_bracket_string(t) for t in trees_val]
+    test_strs = [tree_to_bracket_string(t) for t in trees_test]
+
     return {
-        "train": {"sentences": X_train, "trees": trees_train},
-        "val": {"sentences": X_val, "trees": trees_val},
-        "test": {"sentences": X_test, "trees": trees_test},
+        "train": {
+            "sentences": X_train,
+            "trees": trees_train,
+            "tree_strings": train_strs,
+        },
+        "val": {
+            "sentences": X_val,
+            "trees": trees_val,
+            "tree_strings": val_strs,
+        },
+        "test": {
+            "sentences": X_test,
+            "trees": trees_test,
+            "tree_strings": test_strs,
+        },
     }
 
 
