@@ -32,12 +32,6 @@ python -m src.models.decoder          # Transformer Decoder-Only
 python -m src.models.encoder_decoder  # Transformer Encoder-Decoder
 ```
 
-### Treinar todos os modelos sequencialmente
-
-```bash
-python -m src.models.train_all
-```
-
 ### LLMs (zero-shot / few-shot / RAG)
 
 ```bash
@@ -101,7 +95,6 @@ Os scripts `__main__` de cada modelo executam o pipeline completo: carregamento 
 python -m src.models.encoder          # 2 blocos TransformerEncoder
 python -m src.models.decoder          # 1 bloco TransformerDecoder (causal)
 python -m src.models.encoder_decoder  # Encoder + Decoder com teacher forcing
-python -m src.models.train_all        # Treina os três sequencialmente
 ```
 
 **Atenção:** os scripts apontam o `glove_path` para `/content/drive/MyDrive/NLP/data/glove.6B/` (Google Colab). Se estiver rodando localmente, edite o `glove_path` em cada script para `data/glove.6B/glove.6B.300d.txt`, ou rode a partir da raiz do projeto com o caminho relativo correto. Em caso de `FileNotFoundError`, o treinamento prossegue sem os embeddings GloVe (inicialização aleatória), mas a acurácia será inferior.
@@ -152,9 +145,6 @@ os.makedirs(glove_dir, exist_ok=True)
 !python -m src.models.encoder
 !python -m src.models.decoder
 !python -m src.models.encoder_decoder
-
-# Ou todos de uma vez:
-!python -m src.models.train_all
 ```
 
 ### Estrutura esperada no Google Drive
