@@ -145,48 +145,47 @@ Não exatamente um desafio, mas sim uma decisão a ser tomada. Para avaliar os m
 A estratégia experimental para avaliar os modelos de Rede Neural Recorrente consistiu em analisar o impacto de diferentes células recorrentes e da direcionalidade no processamento de sequências para a tarefa de marcação gramatical (\textit{Part-of-Speech Tagging}). O pipeline foi estruturado nas seguintes etapas:
 
 \begin{itemize}
-    \item \textbf{Processamento dos Dados:} Os dados do \textit{Penn Treebank} foram divididos de forma determinística nos splits de Treino (38.219 sentenças), Validação (5.527 sentenças) e Teste (5.462 sentenças). O vocabulário textual foi truncado nas 8.000 palavras mais frequentes, e as sequências foram limitadas a um comprimento máximo de $max\_len = 249$ tokens.
+    \item \textbf{Processamento dos Dados:} Os dados do \textit{Penn Treebank} foram divididos de forma determinística nos splits de Treino (38.219 sentenças), Validação (5.527 sentenças) e Teste (5.462 sentenças). O vocabulário textual foi truncado nas 8.000 palavras mais frequentes, e as sequências foram limitadas a um comprimento máximo de $max\_len = 249$ tokens. 
     \item \textbf{Mapeamento de Alvos:} O espaço de busca consiste em 47 \textit{tags} únicas de POS gramaticais. O token invisível de preenchimento (\texttt{<PAD>}) foi explicitamente mapeado para o índice 0 e mascarado na camada de acoplamento do modelo para evitar a contaminação dos gradientes.
-    \item \textbf{Hiperparâmetros Fixos:} Para isolar a influência das arquiteturas, todos os experimentos compartilharam um \textit{Embedding} de 128 dimensões, 128 unidades ocultas na camada recorrente, otimizador Adam, função de perda \textit{Sparse Categorical Crossentropy}, \textit{batch size} de 32 e teto estipulado de 5 épocas de treinamento.
+    \item \textbf{Hiperparâmetros Fixos:}  Para isolar a influência de cada arquitetura, todos os experimentos compartilharam o mesmo conjunto de hiperparâmetros. Utilizou-se uma camada de \textit{Embedding} inicializada com os pesos pré-treinados do GloVe de 50 dimensões e uma camada recorrente com 128 unidades ocultas. O treinamento foi conduzido com o otimizador Adam, função de perda \textit{Sparse Categorical Crossentropy} e batch size de 32. Embora o teto de treinamento tenha sido estipulado em 30 épocas, aplicou-se a técnica de \textit{Early Stopping} como critério de parada. Esse mecanismo foi configurado com paciência de três épocas: caso a perda de validação não apresentasse redução nesse intervalo, o processo era interrompido, restaurando-se os pesos do modelo que obteve a menor perda global.
 \end{itemize}
 
 \subsubsection{Resultados Gerais e Comparativos}
-Os quatro modelos implementados (\textit{RNN} Unidirecional, \textit{LSTM} Unidirecional, \textit{RNN} Bidirecional e \textit{LSTM} Bidirecional) foram avaliados de forma rigorosa no conjunto de teste composto por 129.654 tokens textuais ativos (desconsiderando os preenchimentos). A Tabela~\ref{tab:comparativo} consolida os resultados finais de desempenho global aferidos após a conclusão do treinamento.
+Os quatro modelos implementados (\textit{RNN} Unidirecional, \textit{LSTM} Unidirecional, \textit{RNN} Bidirecional e \textit{LSTM} Bidirecional) foram avaliados rigorosamente no conjunto de teste, composto por 129.654 tokens ativos (desconsiderando-se os preenchimentos de \textit{padding}). Para mensurar e contrastar o desempenho das arquiteturas, adotaram-se as seguintes métricas:
 
-\begin{longtable}{|C{4cm}|C{2cm}|C{2cm}|C{2cm}|C{2cm}|}
+\begin{itemize}
+\item \textbf{Acurácia Global:} Mede a proporção de predições corretas em relação ao total de tokens avaliados, fornecendo uma visão geral da eficácia do modelo;
+
+\item \textbf{Média Macro da $F_1$ (\textit{Macro Avg}):} Calculada a partir da média aritmética simples do $F_1$-Score de todas as classes gramaticais, onde o $F_1$ de cada classe consiste na média harmônica entre a sua precisão e a sua revocação (\textit{recall}). Por atribuir o mesmo peso a todas as etiquetas, independentemente de sua frequência de ocorrência, essa métrica é fundamental para avaliar a robustez do modelo diante do desbalanceamento do \textit{dataset}, penalizando a pontuação final caso ocorram erros frequentes em classes minoritárias.
+
+\item \textbf{Tempo por Passo:} Indica o custo computacional temporal despendido por etapa de processamento durante o treinamento. Essa métrica é essencial para analisar o \textit{trade-off} de engenharia, determinando se o ganho em acurácia de uma arquitetura complexa justifica o seu custo de execução.
+
+\end{itemize}
+
+Os resultados globais consolidados após a conclusão dos experimentos, considerando os critérios supracitados, estão apresentados na Tabela 1.
+
+\begin{longtable}{|C{4cm}|C{3cm}|C{4cm}|C{2cm}|}
 \hline
-\textbf{Arquitetura} & \textbf{Acurácia Global} & \textbf{Macro Avg (F1)} & \textbf{Weighted Avg (F1)} & \textbf{Tempo / Step} \\
-\hline
-RNN Unidirecional  & 86,00\% & 0,76 & 0,85 & 37ms \\
-\hline
-LSTM Unidirecional & 87,00\% & 0,81 & 0,87 & 145ms \\
-\hline
-RNN Bidirecional   & 86,00\% & 0,76 & 0,85 & 48ms \\
-\hline
-LSTM Bidirecional  & 90,00\% & 0,85 & 0,90 & 258ms \\
-\hline
+\textbf{Arquitetura} & \textbf{Acurácia Global} & \textbf{Média Macro da F1}  & \textbf{Tempo / Passo} \\ \hline
+RNN Unidirecional  & 90,88\% & 0,8269  & 22,75ms \\ \hline
+LSTM Unidirecional & 92,10\% & 0,8465 & 9,86ms \\ \hline
+RNN Bidirecional   & 94,16\% & 0,8761 & 41.6ms \\ \hline
+LSTM Bidirecional  & 94,68\% & 0,8902 & 14.17ms \\ \hline
 \caption{Avaliação dos métodos implementados} \\
-\end{longtable}
+\end{longtable} 
 
 A análise dos resultados consolidados na Tabela 1 permite traçar conclusões fundamentais sobre o impacto da complexidade arquitetural na tarefa de marcação de \textit{Part-of-Speech}:
 
 \begin{itemize}
-    \item \textbf{Análise do Desempenho Global:} A \textit{LSTM Bidirecional} consolidou-se como o modelo de maior capacidade de generalização do experimento, atingindo a marca de 90,00\% de acurácia global. Este resultado evidencia que a combinação entre o mecanismo de portas (\textit{gates}) e o fluxo bidirecional de informações gera um efeito sinérgico. Enquanto a bidirecionalidade fornece à rede a totalidade do contexto da sentença, as portas de esquecimento e atualização da LSTM filtram ruídos de dependências temporais longas, permitindo associar com precisão as classes gramaticais aos seus respectivos núcleos sintáticos.
+\item \textbf{Análise do Desempenho Global e o Impacto da Bidirecionalidade:} Os resultados revelam que a inclusão do fluxo bidirecional de informações foi o fator determinante para o ganho expressivo de desempenho no experimento. A \textit{LSTM Bidirecional} consolidou-se no topo, atingindo a maior acurácia global (94,68\%) e a maior Média Macro da F1 (0,8902), seguida de perto pela \textit{RNN Bidirecional} (94,16\% de acurácia e 0,8761 de F1). Este comportamento evidencia que, para a tarefa de \textit{POS Tagging}, ter acesso simultâneo ao histórico e ao contexto futuro da sentença é um requisito crítico para elevar o teto de acertos gerais do modelo.
 
-    \item \textbf{Sensibilidade ao Desbalanceamento de Classes:} O comportamento das métricas \textit{Macro Avg} (média aritmética simples entre as classes) e \textit{Weighted Avg} (média ponderada pelo suporte) revela como cada arquitetura lida com a assimetria do \textit{dataset}. Os modelos base (\textit{RNN Unidirecional} e \textit{RNN Bidirecional}) mantiveram uma lacuna acentuada entre essas duas métricas ($\Delta = 0,09$), o que demonstra uma tendência crônica de enviesamento em favor de classes majoritárias (como \texttt{NN} e \texttt{IN}) em detrimento das minoritárias. Em contrapartida, a \textit{LSTM Bidirecional} mitigou significativamente essa distorção, elevando a \textit{Macro Avg} para 0,85 e reduzindo a disparidade para apenas $\Delta = 0,05$. Isso comprova que a estrutura de memória de longo prazo é essencial para preservar o aprendizado de padrões de etiquetas raras na base de dados.
+\item \textbf{O Diferencial das Células LSTM:} Além do ganho contextual trazido pela bidirecionalidade, os mecanismos de portas da LSTM mostraram-se superiores às células de RNN simples em cenários equivalentes. Na comparação direta entre os modelos unidirecionais, a \textit{LSTM Unidirecional} superou a \textit{RNN Unidirecional} tanto em acurácia (92,10\% contra 90,88\%) quanto em Média Macro da F1 (0,8465 contra 0,8269). O mesmo padrão de superioridade da LSTM se repete no cenário bidirecional, comprovando que a capacidade de reter informações de longo prazo mitiga erros em sentenças mais complexas.
 
-    \item \textbf{O Fenômeno da Estagnação na RNN Bidirecional:} Um ponto notável no experimento foi o comportamento da \textit{RNN Bidirecional}, cujo desempenho estagnou exatamente nos mesmos patamares de acurácia (86,00\%) e F1-score da sua contraparte unidirecional, apresentando apenas um acréscimo no tempo de processamento por passo (de 37ms para 48ms). Este fenômeno indica que o aumento do fluxo informacional provocado pela bidirecionalidade não pôde ser assimilado de forma eficiente devido às limitações intrínsecas da célula \textit{SimpleRNN}, a qual sofre com o desvanecimento do gradiente (\textit{vanishing gradient}) e falha em correlacionar o contexto futuro ao histórico em sequências longas.
+\item \textbf{Sensibilidade das Arquiteturas Unidirecionais:} Os modelos baseados em fluxo unidirecional mostraram as maiores limitações do experimento. A \textit{RNN Unidirecional} obteve os menores índices gerais (90,88\% de acurácia e 0,8269 de F1 Macro). Esse comportamento corrobora a hipótese de que processar o texto em apenas um sentido limita a capacidade da rede de resolver ambiguidades gramaticais cuja resolução depende estritamente de palavras ou pistas sintáticas que aparecem adiante na estrutura da sentença.
 
-    \item \textbf{Análise do \textit{Trade-off} Computacional:} Sob a perspectiva de eficiência, observa-se um expressivo custo cobrado pela sofisticação matemática dos modelos. A \textit{LSTM Bidirecional} demandou 258ms por passo de processamento, o que representa um aumento de tempo aproximado de 7 vezes em relação à \textit{RNN Unidirecional} (37ms) e de quase 2 vezes em relação à \textit{LSTM Unidirecional} (145ms). Esse comportamento técnico estabelece um clássico cenário de \textit{trade-off} em sistemas de Produção: o ganho absoluto de +4,00\% em acurácia fornecido pelo modelo topo de linha exige uma infraestrutura de hardware consideravelmente mais robusta e introduz maior latência de inferência em tempo real.
+\item \textbf{Análise de Eficiência Computacional e quebra de paradigma:} Sob a perspectiva de engenharia, a análise do tempo por passo (\textit{Tempo / Step}) trouxe o resultado mais surpreendente do experimento. Ao contrário do esperado teoricamente, as arquiteturas baseadas em LSTM foram significativamente mais velozes do que as RNNs simples durante o treinamento. A \textit{LSTM Unidirecional} foi o modelo mais rápido do experimento (9,86ms), operando em menos da metade do tempo da \textit{RNN Unidirecional} (22,75ms). Da mesma forma, a campeã de desempenho \textit{LSTM Bidirecional} exigiu apenas 14,17ms por passo, cerca de três vezes menos tempo que os 41,60ms demandados pela \textit{RNN Bidirecional}. Esse cenário configura um caso ideal de tomada de decisão: a \textit{LSTM Bidirecional} é a melhor escolha, entregando a máxima qualidade linguística com o menor custo de processamento temporal.
+
 \end{itemize}
-
-\subsubsection{Análise do Impacto Arquitetural}
-\begin{enumerate}
-    \item \textbf{A Força da Bidirecionalidade:} O fator mais determinante na qualidade das previsões foi a inserção de camadas bidirecionais. Ao coletar o contexto posterior (futuro) e anterior (passado), tanto a \textit{RNN Bidirecional} quanto a \textit{LSTM Bidirecional} ultrapassaram os 89,6\% de acurácia de validação imediatamente na 1ª época, patamar nunca alcançado pelas versões unidirecionais.
-    \item \textbf{Gargalo Computacional vs. Ganho Marginal:} A substituição de células \textit{RNN} por \textit{LSTM} trouxe um ganho real de estabilização, mas a um custo computacional massivo. A \textit{LSTM Bidirecional} demorou 1.268 segundos por época (praticamente o triplo da \textit{RNN Bidirecional}), alcançando uma diferença sutil de apenas +0,16\% na acurácia final de validação.
-    \item \textbf{Sobreajuste (Overfitting):} Todas as redes demonstraram saturação após a 2ª ou 3ª época. Enquanto a acurácia de treino continuou subindo de forma agressiva (alcançando 97,42\% na \textit{LSTM Bidirecional}), a acurácia de validação estagnou ou entrou em sutil declínio, indicando a forte necessidade de aplicação de regularizações adicionais (\textit{Dropout} ou \textit{Early Stopping}) para overfitting.
-\end{enumerate}
-
 
 \subsubsection{Análise da Matriz de Confusão}
 A extração das matrizes de confusão reais do conjunto de teste (filtradas e livres dos tokens de padding) expôs que os erros cometidos pelos modelos não são aleatórios, mas sim intrinsecamente ligados a ambiguidades morfológicas e sintáticas da língua inglesa.
@@ -196,7 +195,7 @@ A extração das matrizes de confusão reais do conjunto de teste (filtradas e l
     % Linha 1
     \begin{subfigure}[b]{0.48\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{images/confusion_matrix/rnn_unidirecional.png}
+        \includegraphics[width=\textwidth]{images/confusion_matrix/rnn_unidirecional.png} 
         \caption{RNN Unidirecional}
         \label{fig:mx_simplernn_uni}
     \end{subfigure}
@@ -207,9 +206,9 @@ A extração das matrizes de confusão reais do conjunto de teste (filtradas e l
         \caption{LSTM Unidirecional}
         \label{fig:mx_lstm_uni}
     \end{subfigure}
-
-    \vspace{0.5cm}
-
+    
+    \vspace{0.5cm} 
+    
     % Linha 2
     \begin{subfigure}[b]{0.48\textwidth}
         \centering
@@ -224,7 +223,7 @@ A extração das matrizes de confusão reais do conjunto de teste (filtradas e l
         \caption{LSTM Bidirecional}
         \label{fig:mx_lstm_bi}
     \end{subfigure}
-
+    
     \caption{Matrizes de Confusão obtidas no conjunto de teste para as quatro arquiteturas avaliadas.}
     \label{fig:matrizes_confusao_geral}
 \end{figure}
@@ -232,28 +231,28 @@ A extração das matrizes de confusão reais do conjunto de teste (filtradas e l
 Abaixo estão descritos os principais núcleos de desvio e confusão identificados no mapeamento:
 
 \subsubsection*{O Núcleo de Ambiguidade Modificadora: JJ vs NN}
-Um dos maiores focos de erro cruzado na matriz reside na fronteira entre \textbf{Adjetivos (\texttt{JJ})} e \textbf{Substantivos Comuns no Singular (\texttt{NN})}. Na língua inglesa, é extremamente comum que um substantivo atue temporariamente como um modificador adjunto de outro substantivo (como na expressão \textit{``crystal structure''}, onde \textit{crystal}, originalmente um substantivo, desempenha papel de adjetivo).
+Um dos maiores focos de erro cruzado na matriz reside na fronteira entre \textbf{Adjetivos (\texttt{JJ})} e \textbf{Substantivos Comuns no Singular (\texttt{NN})}. Na língua inglesa, é extremamente comum que um substantivo atue temporariamente como um modificador adjunto de outro substantivo (como na expressão \textit{``crystal structure''}, onde \textit{crystal}, originalmente um substantivo, desempenha papel de adjetivo). 
 Os modelos unidirecionais sofrem para identificar essa transição devido à rigidez do fluxo sequencial, classificando incorretamente muitos adjetivos legítimos como substantivos. Nas redes bidirecionais, a precisão da classe \texttt{JJ} salta de 0,75 para 0,83 devido à capacidade de verificar se o token subsequente é um núcleo nominal.
 
 \subsubsection*{O Problema de Capitalização de Entidades: NNP vs NN/NNPS}
-A Matriz de Confusão evidencia um espessamento de erros na separação de \textbf{Substantivos Próprios (\texttt{NNP})} e Substantivos Comuns (\texttt{NN}), bem como entre suas respectivas formas plurais (\textbf{\texttt{NNPS}} vs. \textbf{\texttt{NNS}}).
-Palavras raras ou não vistas pelo vocabulário que iniciam frases recebem o token de desconhecido (\texttt{[UNK]}). Por estarem capitalizadas na primeira letra devido à regra gramatical de início de período, as redes frequentemente confundem um substantivo comum de suporte sintático (\texttt{NN}) com um nome próprio (\texttt{NNP}).
+A Matriz de Confusão evidencia um espessamento de erros na separação de \textbf{Substantivos Próprios (\texttt{NNP})} e Substantivos Comuns (\texttt{NN}), bem como entre suas respectivas formas plurais (\textbf{\texttt{NNPS}} vs. \textbf{\texttt{NNS}}). 
+Palavras raras ou não vistas pelo vocabulário que iniciam frases recebem o token de desconhecido (\texttt{[UNK]}). Por estarem capitalizadas na primeira letra devido à regra gramatical de início de período, as redes frequentemente confundem um substantivo comum de suporte sintático (\texttt{NN}) com um nome próprio (\texttt{NNP}). 
 
 A classe de substantivos próprios no plural (\texttt{NNPS}) obteve um dos piores desempenhos do relatório técnico (F1-score de apenas 0,27 na \textit{LSTM Bi}). A análise da matriz mostra que a rede majoritariamente desvia esses tokens para \texttt{NNP} (ignorando a flexão de número) ou para \texttt{NNS} (capturando o plural por causa do sufixo ``-s'', mas falhando em notar que se tratava de uma entidade própria devido ao suporte contextual fraco da frase).
 
 \subsubsection*{Sufixos Verbais e Adjetivais: VBD vs VBN vs JJ}
-Outro ponto crítico de confusão identificado na diagonal secundária envolve as tags de \textbf{Verbo no Passado (\texttt{VBD})}, \textbf{Verbo no Particípio (\texttt{VBN})} e \textbf{Adjetivos (\texttt{JJ})}.
-Isso ocorre porque grande parte dos verbos regulares em inglês possuem exatamente a mesma terminação morfológica em ``-ed'' tanto para o passado simples quanto para o particípio (ex: \textit{``isolated''}). Além disso, o particípio pode atuar nativamente como um adjetivo predicativo (ex: \textit{``The patient felt isolated''}).
+Outro ponto crítico de confusão identificado na diagonal secundária envolve as tags de \textbf{Verbo no Passado (\texttt{VBD})}, \textbf{Verbo no Particípio (\texttt{VBN})} e \textbf{Adjetivos (\texttt{JJ})}. 
+Isso ocorre porque grande parte dos verbos regulares em inglês possuem exatamente a mesma terminação morfológica em ``-ed'' tanto para o passado simples quanto para o particípio (ex: \textit{``isolated''}). Além disso, o particípio pode atuar nativamente como um adjetivo predicativo (ex: \textit{``The patient felt isolated''}). 
 
 A matriz de confusão revela que os modelos unidirecionais tendem a classificar de forma enviesada a maioria dos tokens com terminação ``-ed'' como \texttt{VBD} por padrão estatístico de frequência. Novamente, a introdução das redes bidirecionais corrigiu esse desvio estrutural, permitindo que a rede olhasse se o token antecedente era um verbo auxiliar (como \textit{have/has} ou o verbo \textit{to be}), o que caracteriza matematicamente a ativação de um particípio (\texttt{VBN}) em detrimento de um passado simples.
 
 \subsubsection*{Atenuação de Ruído e Contração da Dispersão: Unidirecionais vs Bidirecionais}
-Ao contrastar visualmente as matrizes da Figura~\ref{fig:matrizes_confusao_geral}, nota-se uma nítida mudança no padrão de dispersão dos erros fora da diagonal principal. Nas matrizes das redes unidirecionais (\textit{RNN} e \textit{LSTM} Unidirecionais), há um espalhamento difuso de falsos positivos em colunas dominantes, o que indica que esses modelos recorrem a vieses de frequência estatística quando a palavra atual é ambígua.
 
-Em contrapartida, as arquiteturas bidirecionais — especialmente a LSTM Bidirecional — demonstram uma contração drástica desse ruído periférico. O espessamento fora da diagonal principal é atenuado, confinando os erros estritamente aos pares linguísticos de altíssima ambiguidade (como os já discutidos \texttt{JJ} vs. \texttt{NN}).
+Ao contrastar analiticamente o comportamento das redes a partir dos relatórios de classificação, nota-se uma nítida mudança no padrão de dispersão dos erros. Nas redes unidirecionais (\textit{RNN} e \textit{LSTM} Unidirecionais), há uma queda acentuada de desempenho em classes que dependem fortemente de determinantes posteriores. O caso mais emblemático ocorre na etiqueta de adjetivos (\texttt{JJ}), cujo F1-score fica em $0,7438$ na RNN e $0,7585$ na LSTM, indicando que esses modelos favorecem classes majoritárias como substantivos (\texttt{NN}) quando o fluxo de informação é limitado a apenas um sentido.
 
-No escopo dos métodos bidirecionais, a arquitetura de portas (\textit{gates}) da LSTM demonstrou superioridade analítica ao mitigar erros de classificação nos quais a \textit{SimpleRNN} bidirecional ainda falhava. Ao filtrar de maneira controlada as informações provenientes tanto do histórico quanto do contexto futuro da sequência, a LSTM foi capaz de eliminar falsas ativações em classes minoritárias, concentrando com maior precisão a densidade de probabilidade ao longo da diagonal principal da matriz de confusão.
+Em contrapartida, as arquiteturas bidirecionais demonstram uma contração drástica desse ruído, confinando os erros estritamente aos pares linguísticos de altíssima ambiguidade sintática. Ao introduzir o contexto futuro, o F1-score para \texttt{JJ} salta expressivamente para $0,8539$ na RNN Bidirecional e atinge o ápice de $0,8667$ na LSTM Bidirecional.
 
+No escopo dos métodos bidirecionais, a arquitetura de portas da LSTM demonstrou superioridade analítica ao mitigar erros de classificação tanto em etiquetas complexas de verbos quanto no tratamento de classes minoritárias (de baixo suporte). Como exemplo, para a tag de verbos no gerúndio (\texttt{VBG}), a LSTM Bidirecional conteve a dispersão de falsos positivos mantendo o equilíbrio das métricas, enquanto a RNN Bidirecional, apesar de um bom desempenho global, tendeu a sofrer mais oscilações nessas estruturas flexíveis. Ao filtrar de maneira controlada as informações provenientes de ambas as direções da sequência, a LSTM foi capaz de refinar as fronteiras de decisão, consolidando a maior Média Macro da F1 ($0,8902$) de todo o experimento.
 
 \subsection{Transformer (Encoder-Only, Decoder-Only e Encoder-Decoder)}
 
